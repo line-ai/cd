@@ -2,6 +2,7 @@ import re
 import requests
 import json
 import time
+import json
 from urllib.request import urlopen
 
 class ResponseGenerator:    
@@ -17,18 +18,16 @@ class ResponseGenerator:
             'ú':'u', 'û':'u', 'ü':'u', 'ý':'y', 'ý':'y', 'þ':'b', 'ÿ':'y', 'ƒ':'f',
             'ă':'a', 'î':'i', 'â':'a', 'ș':'s', 'ț':'t', 'Ă':'A', 'Î':'I', 'Â':'A', 'Ș':'S', 'Ț':'T',}
         self.alphabets=urlopen("https://raw.githubusercontent.com/JEF1056/clean-discord/master/src/alphabets.txt").read().decode("utf-8").strip().split("\n")
+        self.emojis=json.loads(urlopen("https://raw.githubusercontent.com/JEF1056/clean-discord/master/src/emojis.json").read().decode("utf-8"))
         for alphabet in self.alphabets[1:]:
-            alphabet=alphabet
             for ind, char in enumerate(alphabet):
                 try:self.normalize_chars[char]=self.alphabets[0][ind]
                 except: print(alphabet, len(alphabet), len(self.alphabets[0]));break
+        self.normalize_chars.update({i:i for i in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'})
         
-        self.r1=re.compile(r'https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)|[\w\-\.]+@(?:[\w-]+\.)+[\w-]{2,4}|(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}|```(?:.?)+```|:[^:\s]*(?:::[^:\s]*)*:|(?:\\n)+|(?<=[:.,!?()]) (?=[:.,!?()])|[^a-z1-9.,!@?\s\/\U0001F600-\U0001F64F\U0001F300-\U0001F5FF]+', flags=re.DOTALL | re.IGNORECASE)
-        self.r2=re.compile(r'[\U00003000\U0000205F\U0000202F\U0000200A\U00002000-\U00002009\U00001680\U000000A0\t]+')
-        self.r5=re.compile(r"([\.\'\"@?!a-z])\1{4,}", re.IGNORECASE)
-        self.r6=re.compile(r"\s(.+?)\1+\s", re.IGNORECASE)
-        self.r8=re.compile(r"([\s!?@\"\'])\1+")
-        self.r9=re.compile(r'\s([?.!\"](?:\s|$))')
+        self.r1=re.compile(r'[\U00003000\U0000205F\U0000202F\U0000200A\U00002000-\U00002009\U00001680\U000000A0\t ]{2,}')
+        self.r3=re.compile(r'https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)|:.+?:|[\w\-\.]+@(?:[\w-]+\.)+[\w-]{2,4}|(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}|```.+?```\n?|(?:\\n)+|(?<=[.,!?()]) (?=[.,!?()])|\b(?:a*ha+h[ha]*|o?l+o+l+[ol]*)\b|(?![:;][3DP])[^a-z0-9.,\'@!?\s\/'+''.join(emojis)+r']+|([a-z])\s([.,\'!?\/])', flags=re.DOTALL | re.IGNORECASE)
+        self.r4=re.compile(r"([a-z.])\1{3,}|([,\'@!?\s\/])\2+", re.IGNORECASE)
         
     def register(self, id, timestamp):
         if id in self.history:
@@ -43,22 +42,24 @@ class ResponseGenerator:
     def reset(self, id):
         self.history[id]={"history":[],"timestamp":time.time()}
         
-    def clean(self, text, author=False):
-        unique=[i for i in list(set(text)) if i not in self.alphabets[0]] #handle special chars from other langs
-        for char in unique: 
-            try: text=text.replace(char, self.normalize_chars[char])
-            except:pass
-        text= re.sub(self.r1, "", text.strip()) #remove urls, emails, code blocks, custom emojis, spaces between punctuation, non-emoji, punctuation, letters, and phone numbers
-        text= re.sub(self.r2, " ", text) #handle... interesting spaces
-        text= re.sub(self.r5, r"\1\1\1", text) #handle excessive repeats of punctuation, limited to 3
-        text= re.sub(self.r6, r" \1 ", text) #handle repeated words
-        text= re.sub(self.r8, r"\1",text) #handle excessive spaces or excessive punctuation
-        text= re.sub(self.r9, r'\1', text) #handle spaces before punctuation but after text
-        text= text.strip().replace("\n","/n") #handle newlines
-        text= text.encode("ascii", "ignore").decode() #remove all non-ascii
-        text=text.strip() #strip the line
-        if author==True: text=text.split(" ")[-1]
-        return text
+    def convemojis(self, i):
+        if i in self.emojis: return self.emojis[i]
+        return i
+        
+    def clean(self, text, author=False):        
+        text=text.translate(self.normal_map)#handle special chars from other langs
+        text=re.sub(self.r1, " ", text) #handle... interesting spaces
+        text= re.sub(self.r3, r"\2\3", text.strip()) #remove urls, emails, code blocks, custom emojis, non-emoji, punctuation, letters, and phone numbers
+        text= re.sub(self.r4, r"\1\1\1\2", text) #handle excessive repeats of punctuation, limited to 3, repeated words, excessive spaces or excessive punctuation, spaces before punctuation but after text
+        text= "".join(list(map(self.convemojis,text))) #translate emojis to their `:text:` shorthand form
+        text= text.strip().replace("\n","\\n").strip("\t") #handle newlines
+            
+        if text != "\\n" and text != " " and text != "" and author==None:
+            return text
+        elif text != "\\n" and text != " " and text != "" and author!=None:
+            return " ".join(text.split(" ")[-2:])
+        else:
+            return None
 
     def response(self, user, inp, debug=False):
         self.register(user.id, time.time())
