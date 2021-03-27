@@ -4,10 +4,12 @@ import json
 import time
 import json
 from urllib.request import urlopen
+import copy
 
 class ResponseGenerator:    
     def __init__(self, url): 
         self.history={}
+        self.memcache={}
         self.url=url
         self.normalize_chars={'Š':'S', 'š':'s', 'Ð':'Dj','Ž':'Z', 'ž':'z', 'À':'A', 'Á':'A', 'Â':'A', 'Ã':'A', 'Ä':'A',
             'Å':'A', 'Æ':'A', 'Ç':'C', 'È':'E', 'É':'E', 'Ê':'E', 'Ë':'E', 'Ì':'I', 'Í':'I', 'Î':'I',
@@ -32,7 +34,7 @@ class ResponseGenerator:
         
     def register(self, id, timestamp):
         if id in self.history:
-            if timestamp-self.history[id]["timestamp"] >= 600:
+            if timestamp-self.history[id]["timestamp"] >= 9999999:
                 self.history[id]={"history":[],"timestamp":timestamp}
             else:
                 self.history[id]["timestamp"]=timestamp
@@ -47,7 +49,7 @@ class ResponseGenerator:
         if i in self.emojis: return self.emojis[i]
         return i
         
-    def clean(self, text, author=False):        
+    def clean(self, text, author=None):        
         text=text.translate(self.normal_map)#handle special chars from other langs
         text=re.sub(self.r1, " ", text) #handle... interesting spaces
         text= re.sub(self.r3, r"\2\3", text.strip()) #remove urls, emails, code blocks, custom emojis, non-emoji, punctuation, letters, and phone numbers
@@ -61,8 +63,20 @@ class ResponseGenerator:
             return " ".join(text.split(" ")[-2:])
         else:
             return None
+    
+    def update_resp(self, userid, id, debug=False):
+        inpdata = '{"inputs": ["'+'/b'.join(self.memcache[str(id)])+'"]}'
+        response = requests.post(self.url.encode("utf-8"), data=inpdata.encode("utf-8"))
+        message = json.loads(response.text)
+        if "error" in message or debug: 
+            print(f"{message}")
+            if "error" in message: return str(message)
+        else:
+            print(self.memcache[str(id)])
+            self.history[userid]["history"]=self.memcache[str(id)]+["Jade: "+message["outputs"]["outputs"][0]]
+        return message["outputs"]["outputs"][0].replace("/n", "\n")
 
-    def response(self, user, inp, debug=False):
+    def response(self, user, inp, mid, debug=False):
         self.register(user.id, time.time())
         inp= self.clean(user.display_name, author=True)+": "+self.clean(inp)
         inpdata = '{"inputs": ["'+'/b'.join(self.history[user.id]["history"]+[inp])+'"]}'
@@ -72,6 +86,7 @@ class ResponseGenerator:
             print(f"{message}")
             if "error" in message: return str(message)
         self.history[user.id]["history"].append(inp)
+        self.memcache[str(mid)]=copy.deepcopy(self.history[user.id]["history"])
         self.history[user.id]["history"].append("Jade: "+message["outputs"]["outputs"][0])
         self.history[user.id]["history"] = self.history[user.id]["history"][-10:]
-        return message["outputs"]["outputs"][0].replace("/n", "\n")
+        return str(message["outputs"]["outputs"][0].replace("/n", "\n"))
