@@ -26,7 +26,7 @@ async def on_raw_reaction_add(payload):
     if str(payload.emoji) == "❌":
         channel=await client.fetch_channel(payload.channel_id)
         message=await channel.fetch_message(payload.message_id)
-        await message.edit(content="Loading...")
+        await message.edit(content="<a:loading:825450039287349293>")
         await message.clear_reactions()
         out = await loop.run_in_executor(ThreadPoolExecutor(), model.update_resp, message.mentions[0].id, payload.message_id, False)
         await message.edit(content=out.replace("@everyone","").replace("@here", ""))
@@ -45,7 +45,7 @@ async def on_message(message):
                 await message.reply("Successfully reset your history with JaAyakade")
             else:
                 print(message.content)
-                msg=await message.reply("Loading...")
+                msg=await message.reply("<a:loading:825450039287349293>")
                 async with message.channel.typing():
                     out = await loop.run_in_executor(ThreadPoolExecutor(), model.response, message.author, message.content, msg.id, True)
                 await msg.edit(content=out.replace("@everyone","").replace("@here", ""))
