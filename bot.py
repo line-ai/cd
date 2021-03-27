@@ -33,6 +33,7 @@ async def on_message(message):
                 model.reset(message.author.id)
                 await message.reply("Successfully reset your history with Jade")
             else:
+                print(message.content)
                 async with message.channel.typing():
                     out = await loop.run_in_executor(ThreadPoolExecutor(), model.response, message.author, message.content, True)
                 await message.reply(out.replace("@everyone","").replace("@here", ""))
