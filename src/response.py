@@ -73,7 +73,7 @@ class ResponseGenerator:
             if "error" in message: return str(message)
         else:
             print(self.memcache[str(id)])
-            self.history[userid]["history"]=self.memcache[str(id)]+["Jade: "+message["outputs"]["outputs"][0]]
+            self.history[userid]["history"]=self.memcache[str(id)]+["Ayaka: "+message["outputs"]["outputs"][0]]
         return message["outputs"]["outputs"][0].replace("/n", "\n")
 
     def response(self, user, inp, mid, debug=False):
@@ -87,6 +87,6 @@ class ResponseGenerator:
             if "error" in message: return str(message)
         self.history[user.id]["history"].append(inp)
         self.memcache[str(mid)]=copy.deepcopy(self.history[user.id]["history"])
-        self.history[user.id]["history"].append("Jade: "+message["outputs"]["outputs"][0])
+        self.history[user.id]["history"].append("Ayaka: "+message["outputs"]["outputs"][0])
         self.history[user.id]["history"] = self.history[user.id]["history"][-10:]
         return str(message["outputs"]["outputs"][0].replace("/n", "\n"))

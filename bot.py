@@ -42,7 +42,7 @@ async def on_message(message):
                 await message.reply("History:\n> "+"\n> ".join(logs["history"])+f"\nLast seen: {datetime.fromtimestamp(logs['timestamp'])}")
             elif message.content == "-r":
                 model.reset(message.author.id)
-                await message.reply("Successfully reset your history with JaAyakade")
+                await message.reply("Successfully reset your history with Ayaka")
             else:
                 print(message.content)
                 msg=await message.reply("<a:loading:825450039287349293>")
